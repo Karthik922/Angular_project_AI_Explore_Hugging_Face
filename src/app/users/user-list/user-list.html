@@ -1,0 +1,31 @@
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="m-0 text-2xl font-semibold">Users</h1>
+    @if (total() !== null) {
+      <p class="mt-1 mb-0 text-muted-color">{{ total() }} total</p>
+    }
+  </div>
+  <div class="flex gap-2">
+    <p-button label="Refresh" icon="pi pi-refresh" severity="secondary" [outlined]="true" (onClick)="refresh()" />
+    <a pButton routerLink="/users/new"><i class="pi pi-plus" pButtonIcon></i><span pButtonLabel>Add User</span></a>
+  </div>
+</div>
+
+@if (error(); as message) {
+  <p-message severity="error" styleClass="mb-4">{{ message }}</p-message>
+}
+
+<ag-grid-angular
+  class="grid"
+  rowModelType="infinite"
+  [theme]="gridTheme"
+  [columnDefs]="columnDefs"
+  [defaultColDef]="defaultColDef"
+  [context]="context"
+  [pagination]="true"
+  [paginationPageSize]="pageSize"
+  [paginationPageSizeSelector]="false"
+  [cacheBlockSize]="pageSize"
+  [maxBlocksInCache]="10"
+  (gridReady)="onGridReady($event)"
+/>

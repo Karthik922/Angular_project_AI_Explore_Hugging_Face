@@ -1,0 +1,20 @@
+<app-header (menuToggle)="toggleMenu()" />
+
+<div class="flex">
+  <aside
+    class="sticky top-16 hidden h-[calc(100vh-4rem)] shrink-0 overflow-y-auto border-r border-surface bg-surface-0 transition-[width] duration-200 dark:bg-surface-900 md:block"
+    [class]="sidebarCollapsed() ? 'w-[4.5rem]' : 'w-64'"
+  >
+    <app-sidebar [collapsed]="sidebarCollapsed()" />
+  </aside>
+
+  <main class="min-w-0 flex-1 px-4 py-6 sm:px-6">
+    <div class="mx-auto max-w-7xl">
+      <router-outlet />
+    </div>
+  </main>
+</div>
+
+<p-drawer [visible]="mobileMenuOpen()" (visibleChange)="mobileMenuOpen.set($event)" header="User Admin">
+  <app-sidebar (navigate)="mobileMenuOpen.set(false)" />
+</p-drawer>

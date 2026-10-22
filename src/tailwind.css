@@ -1,0 +1,8 @@
+/* PrimeNG injects its styles into the `primeng` layer; placing it before `utilities` lets Tailwind classes override components. */
+@layer theme, base, primeng, components, utilities;
+
+@import 'tailwindcss' source('./');
+@import 'tailwindcss-primeui';
+
+/* Matches PrimeNG's darkModeSelector so `dark:` utilities follow the app toggle, not the OS setting. */
+@custom-variant dark (&:where(.app-dark, .app-dark *));

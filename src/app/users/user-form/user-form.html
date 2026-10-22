@@ -1,0 +1,52 @@
+<div class="mb-4">
+  <h1 class="m-0 text-2xl font-semibold">{{ isEdit() ? 'Edit User #' + id() : 'Add User' }}</h1>
+</div>
+
+@if (error(); as message) {
+  <p-message severity="error" styleClass="mb-4">{{ message }}</p-message>
+}
+
+@if (loading()) {
+  <p class="text-muted-color">Loading…</p>
+} @else {
+  <form
+    class="flex max-w-xl flex-col gap-5 rounded-xl border border-surface bg-surface-0 p-6 dark:bg-surface-900"
+    [formGroup]="form"
+    (ngSubmit)="save()"
+    novalidate
+  >
+    <div class="flex flex-col gap-2">
+      <label for="name" class="font-medium">Name *</label>
+      <input pInputText id="name" type="text" formControlName="name" autocomplete="off" [invalid]="showError('name')" />
+      @if (showError('name')) {
+        <small class="text-red-500">Name is required (max 100 characters).</small>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="email" class="font-medium">Email *</label>
+      <input pInputText id="email" type="email" formControlName="email" autocomplete="off" [invalid]="showError('email')" />
+      @if (showError('email')) {
+        <small class="text-red-500">Enter a valid email address.</small>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="age" class="font-medium">Age</label>
+      <input pInputText id="age" type="number" formControlName="age" min="0" step="1" [invalid]="showError('age')" />
+      @if (showError('age')) {
+        <small class="text-red-500">Age cannot be negative.</small>
+      }
+    </div>
+
+    <div class="mt-2 flex justify-end gap-2">
+      <a pButton severity="secondary" [outlined]="true" routerLink="/users"><span pButtonLabel>Cancel</span></a>
+      <p-button
+        type="submit"
+        [label]="saving() ? 'Saving…' : isEdit() ? 'Update User' : 'Create User'"
+        icon="pi pi-check"
+        [loading]="saving()"
+      />
+    </div>
+  </form>
+}
