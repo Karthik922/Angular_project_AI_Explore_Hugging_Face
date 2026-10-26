@@ -1,12 +1,11 @@
 import { Component, input, output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { Ripple } from 'primeng/ripple';
-import { Tooltip } from 'primeng/tooltip';
 import { NAV_ITEMS } from '../nav-items';
 
 @Component({
   selector: 'app-sidebar',
-  imports: [RouterLink, RouterLinkActive, Ripple, Tooltip],
+  imports: [RouterLink, RouterLinkActive, Ripple],
   template: `
     <nav class="flex flex-col gap-1 p-3" aria-label="Main">
       @for (item of items; track item.link) {
@@ -15,8 +14,8 @@ import { NAV_ITEMS } from '../nav-items';
           [routerLink]="item.link"
           routerLinkActive="bg-primary text-primary-contrast hover:bg-primary!"
           [routerLinkActiveOptions]="{ exact: !!item.exact }"
-          [pTooltip]="collapsed() ? item.label : undefined"
-          tooltipPosition="right"
+          [attr.title]="collapsed() ? item.label : null"
+          [attr.aria-label]="collapsed() ? item.label : null"
           class="p-ripple flex items-center gap-3 rounded-md px-3 py-2.5 text-color no-underline transition-colors hover:bg-emphasis"
           [class.justify-center]="collapsed()"
           (click)="navigate.emit()"

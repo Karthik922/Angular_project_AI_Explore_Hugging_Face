@@ -1,0 +1,137 @@
+<div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+  <div>
+    <h1 class="m-0 text-2xl font-semibold">Image Gallery</h1>
+    <p class="mt-1 mb-0 text-muted-color">Product photos served from Amazon's image CDN, sized for your screen.</p>
+  </div>
+
+  @if (isDev) {
+    <!-- Development only: exercise the loading and error states against the real API. -->
+    <label class="flex items-center gap-2 rounded-md border border-dashed border-surface px-3 py-1.5 text-sm text-muted-color">
+      <i class="pi pi-wrench"></i> Simulate
+      <select
+        id="gallery-simulate"
+        class="rounded border border-surface bg-surface-0 px-2 py-1 text-sm text-color dark:bg-surface-900"
+        (change)="selectSimulation($event)"
+      >
+        <option value="" [selected]="!activeSimulation()">Normal</option>
+        @for (mode of simulations; track mode) {
+          <option [value]="mode" [selected]="mode === activeSimulation()">{{ mode }}</option>
+        }
+      </select>
+    </label>
+  }
+</div>
+
+@if (!online()) {
+  <p-message severity="warn" icon="pi pi-wifi" styleClass="mb-4">
+    You're offline. Images already loaded stay visible; the rest load when you're back online.
+  </p-message>
+}
+
+<nav class="mb-2 flex flex-wrap gap-2" aria-label="Filter by category">
+  <button type="button" class="chip" [class.chip-active]="!activeCategory()" [attr.aria-pressed]="!activeCategory()" (click)="selectCategory(undefined)">
+    All
+    @if (totalCount() !== undefined) {
+      <span class="chip-count">{{ totalCount() }}</span>
+    }
+  </button>
+  @for (category of categories(); track category.name) {
+    <button
+      type="button"
+      class="chip"
+      [class.chip-active]="activeCategory() === category.name"
+      [attr.aria-pressed]="activeCategory() === category.name"
+      (click)="selectCategory(category.name)"
+    >
+      {{ category.name }}
+      @if (category.count !== undefined) {
+        <span class="chip-count">{{ category.count }}</span>
+      }
+    </button>
+  }
+</nav>
+
+<!-- Fixed-height status line and progress bar, so loading messages never push the grid around. -->
+<div class="mb-3 flex h-6 items-center text-sm text-muted-color" role="status" aria-live="polite">
+  @if (gallery.isLoading()) {
+    @if (slowRequest()) {
+      <span class="text-amber-600 dark:text-amber-400"><i class="pi pi-spin pi-spinner"></i> The server is taking longer than usual. Still trying…</span>
+    } @else {
+      <span><i class="pi pi-spin pi-spinner"></i> Loading images…</span>
+    }
+  } @else if (view() === 'grid') {
+    <span>{{ items()!.length }} images</span>
+  }
+</div>
+<div class="mb-4 h-1 overflow-hidden rounded-full">
+  @if (gallery.isLoading() && items()) {
+    <div class="progress-bar h-full w-1/3 rounded-full bg-primary"></div>
+  }
+</div>
+
+@switch (view()) {
+  @case ('skeleton') {
+    <ul class="grid list-none grid-cols-2 gap-4 p-0 md:grid-cols-3 xl:grid-cols-4" aria-hidden="true">
+      @for (n of skeletons; track n) {
+        <li class="overflow-hidden rounded-xl border border-surface bg-surface-0 dark:bg-surface-900">
+          <div class="aspect-square animate-pulse bg-surface-100 motion-reduce:animate-none dark:bg-surface-800"></div>
+          <div class="flex flex-col gap-2 p-3">
+            <div class="h-3 w-1/3 animate-pulse rounded bg-surface-100 motion-reduce:animate-none dark:bg-surface-800"></div>
+            <div class="h-4 w-11/12 animate-pulse rounded bg-surface-100 motion-reduce:animate-none dark:bg-surface-800"></div>
+            <div class="h-4 w-2/3 animate-pulse rounded bg-surface-100 motion-reduce:animate-none dark:bg-surface-800"></div>
+            <div class="mt-1 h-5 w-1/4 animate-pulse rounded bg-surface-100 motion-reduce:animate-none dark:bg-surface-800"></div>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+
+  @case ('error') {
+    @let error = errorInfo();
+    <section class="flex flex-col items-center gap-3 rounded-xl border border-surface bg-surface-0 px-6 py-14 text-center dark:bg-surface-900" role="alert">
+      <span class="flex size-14 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400">
+        <i [class]="error.icon" class="text-2xl"></i>
+      </span>
+      <h2 class="m-0 text-lg font-semibold">{{ error.title }}</h2>
+      <p class="m-0 max-w-md text-muted-color">{{ error.detail }}</p>
+      <div class="mt-2 flex flex-wrap justify-center gap-2">
+        <p-button label="Try again" icon="pi pi-refresh" [loading]="gallery.isLoading()" (onClick)="gallery.reload()" />
+        @if (activeCategory()) {
+          <p-button label="Show all categories" severity="secondary" [outlined]="true" (onClick)="selectCategory(undefined)" />
+        }
+      </div>
+    </section>
+  }
+
+  @case ('empty') {
+    <section class="flex flex-col items-center gap-2 rounded-xl border border-dashed border-surface px-6 py-14 text-center">
+      <i class="pi pi-images text-3xl text-muted-color"></i>
+      <h2 class="m-0 text-lg font-semibold">No images here yet</h2>
+      <p class="m-0 text-muted-color">There are no products in this category.</p>
+    </section>
+  }
+
+  @case ('grid') {
+    <ul
+      class="grid list-none grid-cols-2 gap-4 p-0 transition-opacity md:grid-cols-3 xl:grid-cols-4"
+      [class.opacity-60]="gallery.isLoading()"
+    >
+      @for (item of items(); track item.id; let i = $index) {
+        <li>
+          <app-gallery-card [item]="item" [priority]="i < priorityImages" (open)="openLightbox(i)" />
+        </li>
+      }
+    </ul>
+  }
+}
+
+<!-- The lightbox code downloads in the background once the page is idle, and renders on first open. -->
+@defer (when lightboxOpen(); prefetch on idle) {
+  @if (lightboxOpen() && items(); as list) {
+    <app-lightbox [items]="list" [(index)]="lightboxIndex" (closed)="lightboxOpen.set(false)" />
+  }
+} @loading (after 200ms) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <i class="pi pi-spin pi-spinner text-3xl text-white"></i>
+  </div>
+}

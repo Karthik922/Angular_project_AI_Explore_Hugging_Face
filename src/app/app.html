@@ -15,6 +15,9 @@
   </main>
 </div>
 
-<p-drawer [visible]="mobileMenuOpen()" (visibleChange)="mobileMenuOpen.set($event)" header="User Admin">
-  <app-sidebar (navigate)="mobileMenuOpen.set(false)" />
-</p-drawer>
+<!-- Mobile-only: the Drawer code loads the first time the menu is opened on a small screen. -->
+@defer (when mobileMenuOpen()) {
+  <p-drawer [visible]="mobileMenuOpen()" (visibleChange)="mobileMenuOpen.set($event)" header="User Admin">
+    <app-sidebar (navigate)="mobileMenuOpen.set(false)" />
+  </p-drawer>
+}

@@ -4,13 +4,15 @@ import { AgGridAngular } from 'ag-grid-angular';
 import { ButtonModule } from 'primeng/button';
 import { Message } from 'primeng/message';
 import {
-  AllCommunityModule,
   ColDef,
   GridApi,
   GridReadyEvent,
   IDatasource,
   IGetRowsParams,
+  InfiniteRowModelModule,
   ModuleRegistry,
+  PaginationModule,
+  ValidationModule,
   themeQuartz,
 } from 'ag-grid-community';
 import { ActionsCell, ActionsCellContext } from '../actions-cell/actions-cell';
@@ -18,7 +20,14 @@ import { User } from '../user.model';
 import { UserService, apiErrorMessage } from '../user.service';
 
 // Registered here (not in main.ts) so AG Grid ships in this lazy chunk, not the initial bundle.
-ModuleRegistry.registerModules([AllCommunityModule]);
+// Only the features this grid uses: AllCommunityModule pulled in filters, editors, export, etc.
+// ValidationModule (dev builds only, tree-shaken in production) logs a console error naming any
+// module a newly used grid feature needs.
+ModuleRegistry.registerModules([
+  InfiniteRowModelModule,
+  PaginationModule,
+  ...(ngDevMode ? [ValidationModule] : []),
+]);
 
 const PAGE_SIZE = 50;
 

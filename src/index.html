@@ -6,6 +6,8 @@
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <!-- Gallery images come from Amazon's CDN: open the connection early (NgOptimizedImage checks for this). -->
+    <link rel="preconnect" href="https://m.media-amazon.com" />
   </head>
   <body>
     <app-root></app-root>

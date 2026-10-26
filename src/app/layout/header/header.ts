@@ -1,22 +1,12 @@
-import { Component, computed, inject, output } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, inject, output, signal, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
-import { Popover } from 'primeng/popover';
-import { SelectButton } from 'primeng/selectbutton';
-import { Tooltip } from 'primeng/tooltip';
-import {
-  PRESET_NAMES,
-  PRIMARY_COLORS,
-  SURFACE_COLORS,
-  PresetName,
-  ThemeService,
-  palette,
-} from '../../core/theme.service';
+import { ThemeService } from '../../core/theme.service';
+import { ThemePanel } from '../theme-panel/theme-panel';
 
 @Component({
   selector: 'app-header',
-  imports: [FormsModule, RouterLink, ButtonModule, Popover, SelectButton, Tooltip],
+  imports: [RouterLink, ButtonModule, ThemePanel],
   template: `
     <header
       class="sticky top-0 z-20 flex h-16 items-center gap-2 border-b border-surface bg-surface-0 px-3 dark:bg-surface-900 sm:px-4"
@@ -43,9 +33,8 @@ import {
           [rounded]="true"
           severity="secondary"
           ariaLabel="Change color theme"
-          pTooltip="Theme"
-          tooltipPosition="bottom"
-          (onClick)="themePanel.toggle($event)"
+          title="Theme"
+          (onClick)="toggleThemePanel($event)"
         />
         <p-button
           [icon]="settings().dark ? 'pi pi-sun' : 'pi pi-moon'"
@@ -53,63 +42,16 @@ import {
           [rounded]="true"
           severity="secondary"
           [ariaLabel]="settings().dark ? 'Switch to light mode' : 'Switch to dark mode'"
-          [pTooltip]="settings().dark ? 'Light mode' : 'Dark mode'"
-          tooltipPosition="bottom"
+          [title]="settings().dark ? 'Light mode' : 'Dark mode'"
           (onClick)="theme.toggleDarkMode()"
         />
       </div>
     </header>
 
-    <p-popover #themePanel>
-      <div class="flex w-64 flex-col gap-4">
-        <section>
-          <h3 class="mb-2 text-sm font-semibold text-muted-color">Primary</h3>
-          <div class="flex flex-wrap gap-2">
-            @for (color of primaryColors; track color.name) {
-              <button
-                type="button"
-                class="size-5 cursor-pointer rounded-full border-0 outline-offset-2"
-                [style.background]="color.swatch"
-                [class.outline-2]="settings().primary === color.name"
-                [style.outline-color]="color.swatch"
-                [attr.aria-label]="color.name"
-                [title]="color.name"
-                (click)="theme.setPrimary(color.name)"
-              ></button>
-            }
-          </div>
-        </section>
-
-        <section>
-          <h3 class="mb-2 text-sm font-semibold text-muted-color">Surface</h3>
-          <div class="flex flex-wrap gap-2">
-            @for (color of surfaceColors; track color.name) {
-              <button
-                type="button"
-                class="size-5 cursor-pointer rounded-full border-0 outline-offset-2"
-                [style.background]="color.swatch"
-                [class.outline-2]="settings().surface === color.name"
-                [style.outline-color]="color.swatch"
-                [attr.aria-label]="color.name"
-                [title]="color.name"
-                (click)="theme.setSurface(color.name)"
-              ></button>
-            }
-          </div>
-        </section>
-
-        <section>
-          <h3 class="mb-2 text-sm font-semibold text-muted-color">Preset</h3>
-          <p-selectbutton
-            [options]="presets"
-            [ngModel]="settings().preset"
-            (ngModelChange)="onPresetChange($event)"
-            [allowEmpty]="false"
-            size="small"
-          />
-        </section>
-      </div>
-    </p-popover>
+    <!-- Popover, SelectButton and FormsModule load on first use, prefetched once the page is idle. -->
+    @defer (when themePanelRequested(); prefetch on idle) {
+      <app-theme-panel [openAt]="themePanelAnchor" />
+    }
   `,
 })
 export class Header {
@@ -118,11 +60,18 @@ export class Header {
 
   readonly menuToggle = output<void>();
 
-  protected readonly presets = PRESET_NAMES;
-  protected readonly primaryColors = PRIMARY_COLORS.map((name) => ({ name, swatch: palette(name)[500] }));
-  protected readonly surfaceColors = SURFACE_COLORS.map((name) => ({ name, swatch: palette(name)[500] }));
+  protected readonly themePanelRequested = signal(false);
+  protected themePanelAnchor: HTMLElement | null = null;
+  private readonly themePanel = viewChild(ThemePanel);
 
-  protected onPresetChange(preset: PresetName | null): void {
-    if (preset) this.theme.setPreset(preset);
+  protected toggleThemePanel(event: Event): void {
+    const panel = this.themePanel();
+    if (panel) {
+      panel.toggle(event);
+    } else {
+      // First click: load the panel; it opens itself at this anchor once rendered.
+      this.themePanelAnchor = event.currentTarget as HTMLElement;
+      this.themePanelRequested.set(true);
+    }
   }
 }

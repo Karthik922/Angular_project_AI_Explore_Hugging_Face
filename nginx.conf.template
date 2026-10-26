@@ -1,0 +1,38 @@
+server {
+  listen 80;
+  server_name _;
+  root /usr/share/nginx/html;
+  index index.html;
+
+  # Compress text assets; JS/CSS bundles shrink ~4-5x.
+  gzip on;
+  gzip_comp_level 6;
+  gzip_min_length 1024;
+  gzip_vary on;
+  gzip_types text/plain text/css application/javascript text/javascript application/json image/svg+xml
+             application/vnd.ms-fontobject font/ttf;
+
+  # Same-origin API: /api/users -> ${API_URL}/users (mirrors proxy.conf.json in dev).
+  # API_URL is filled in from the environment when the container starts (see docker-compose.yml).
+  location /api/ {
+    proxy_pass ${API_URL}/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+
+  # Angular emits content-hashed file names, so they can be cached forever.
+  location ~* \.(?:js|css|woff2?|ttf|eot|svg|png|jpe?g|gif|ico|webp)$ {
+    expires 1y;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+    try_files $uri =404;
+  }
+
+  # index.html must always be revalidated so new deployments are picked up.
+  location / {
+    add_header Cache-Control "no-cache";
+    try_files $uri $uri/ /index.html;
+  }
+}
