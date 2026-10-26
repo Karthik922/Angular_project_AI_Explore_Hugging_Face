@@ -1,5 +1,6 @@
 import { NgOptimizedImage } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, input, linkedSignal, signal } from '@angular/core';
+import { withAttempt } from '../amazon-image-loader';
 
 type ImageState = 'loading' | 'loaded' | 'error';
 
@@ -23,21 +24,18 @@ const SLOW_AFTER_MS = 6000;
   },
   template: `
     @if (state() !== 'error') {
-      <!-- Keyed so a retry or a priority change creates a fresh <img>: NgOptimizedImage inputs are fixed after init. -->
-      @for (key of imgKey(); track key) {
-        <img
-          [ngSrc]="src()"
-          [alt]="alt()"
-          fill
-          [sizes]="sizes()"
-          [priority]="priority()"
-          [placeholder]="placeholder()"
-          [loaderParams]="{ attempt: attempt() }"
-          class="object-contain"
-          (load)="state.set('loaded')"
-          (error)="onError()"
-        />
-      }
+      <!-- Only ngSrc may change after init (NgOptimizedImage), so retries are encoded in it. -->
+      <img
+        [ngSrc]="ngSrc()"
+        [alt]="alt()"
+        fill
+        [sizes]="sizes()"
+        [priority]="priority()"
+        [placeholder]="placeholder()"
+        class="object-contain"
+        (load)="state.set('loaded')"
+        (error)="onError()"
+      />
       @if (state() === 'loading') {
         <div class="shimmer" aria-hidden="true"></div>
         @if (slow()) {
@@ -123,16 +121,22 @@ export class SmartImage {
    * Responsive (vw) values only: NgOptimizedImage rejects px here when it generates the srcset.
    */
   readonly sizes = input('100vw');
-  /** Set for above-the-fold images (the LCP candidate): eager load with high fetch priority. */
+  /**
+   * Set for above-the-fold images (the LCP candidate): eager load with high fetch priority.
+   * Fixed after init: the parent must re-create this component if it changes (see the gallery's track).
+   */
   readonly priority = input(false);
-  /** Blurred low-res preview while loading. Angular recommends it only for images under 1000 px. */
+  /**
+   * Blurred low-res preview while loading. Its tiny image downloads immediately even when the
+   * real image is lazy, so leave it off for long lists. Angular recommends it only under 1000 px.
+   */
   readonly placeholder = input(true);
 
   /** Reset whenever a different image is shown (e.g. the next photo in the lightbox). */
   protected readonly attempt = linkedSignal({ source: this.src, computation: () => 0 });
   protected readonly state = linkedSignal<string, ImageState>({ source: this.src, computation: () => 'loading' });
   protected readonly slow = signal(false);
-  protected readonly imgKey = computed(() => [`${this.src()}|${this.attempt()}|${this.priority()}`]);
+  protected readonly ngSrc = computed(() => withAttempt(this.src(), this.attempt()));
 
   constructor() {
     effect((onCleanup) => {

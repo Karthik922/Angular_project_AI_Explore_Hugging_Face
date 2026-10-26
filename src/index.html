@@ -8,6 +8,23 @@
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <!-- Gallery images come from Amazon's CDN: open the connection early (NgOptimizedImage checks for this). -->
     <link rel="preconnect" href="https://m.media-amazon.com" />
+    <script>
+      // Gallery early data fetch: request the image list now, in parallel with the app's JavaScript,
+      // instead of after the gallery code has loaded. The gallery's httpResource then reuses this
+      // response (preload cache, else the API's Cache-Control: max-age=60). The URL must match the
+      // one Gallery builds exactly; keep in sync with gallery.ts. Simulations (dev only) are skipped.
+      (function () {
+        var url = new URL(location.href);
+        if (url.pathname.replace(/\/+$/, '') !== '/gallery' || url.searchParams.has('simulate')) return;
+        var category = url.searchParams.get('category');
+        var link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'fetch';
+        link.crossOrigin = 'anonymous';
+        link.href = '/api/gallery' + (category ? '?category=' + encodeURIComponent(category) : '');
+        document.head.appendChild(link);
+      })();
+    </script>
   </head>
   <body>
     <app-root></app-root>

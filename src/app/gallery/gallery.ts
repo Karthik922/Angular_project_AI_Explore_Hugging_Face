@@ -64,7 +64,10 @@ export class Gallery {
     return this.isDev && (SIMULATIONS as readonly string[]).includes(value ?? '') ? (value as Simulation) : undefined;
   });
 
-  /** Refetches automatically whenever the category (or dev simulation) changes. */
+  /**
+   * Refetches automatically whenever the category (or dev simulation) changes.
+   * index.html preloads the first request; keep its URL in sync with this one.
+   */
   protected readonly gallery = httpResource<GalleryResponse>(() => {
     const category = this.activeCategory();
     const simulate = this.activeSimulation();

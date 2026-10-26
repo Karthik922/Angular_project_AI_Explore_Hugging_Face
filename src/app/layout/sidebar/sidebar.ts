@@ -16,7 +16,7 @@ import { NAV_ITEMS } from '../nav-items';
           [routerLinkActiveOptions]="{ exact: !!item.exact }"
           [attr.title]="collapsed() ? item.label : null"
           [attr.aria-label]="collapsed() ? item.label : null"
-          class="p-ripple flex items-center gap-3 rounded-md px-3 py-2.5 text-color no-underline transition-colors hover:bg-emphasis"
+          class="p-ripple flex items-center gap-3 rounded-md px-3 py-2.5 text-color no-underline hover:bg-emphasis"
           [class.justify-center]="collapsed()"
           (click)="navigate.emit()"
         >

@@ -9,19 +9,31 @@ export const PLACEHOLDER_WIDTH = 30;
 /**
  * NgOptimizedImage loader for Amazon's image CDN. The CDN resizes on the fly: `_AC_SX{width}_`
  * returns the image scaled to that width (capped at the original size), so the browser can pick
- * the smallest file that fits from the generated `srcset`.
+ * the smallest file that fits from the generated `srcset`. `_FMwebp_` asks for WebP, which is
+ * 30–60% smaller than the JPEG Amazon serves by default (the `.jpg` extension is just part of the key).
  *
- * `loaderParams.attempt` adds a query string so a retry after a failed load bypasses the cached error.
+ * A retry is requested as `<imageId>#<attempt>` (see `withAttempt`): changing `ngSrc` is the one
+ * NgOptimizedImage input allowed to change after init. It becomes `?attempt=N` so the browser
+ * doesn't reuse its cached failure.
  */
-export function amazonImageLoader({ src, width, isPlaceholder, loaderParams }: ImageLoaderConfig): string {
-  const size = isPlaceholder ? PLACEHOLDER_WIDTH : (width ?? 480);
-  const attempt = Number(loaderParams?.['attempt'] ?? 0);
-  return `${AMAZON_CDN}${src}._AC_SX${size}_.jpg${attempt > 0 ? `?attempt=${attempt}` : ''}`;
+export function amazonImageLoader({ src, width, isPlaceholder }: ImageLoaderConfig): string {
+  const [imageId, attempt] = src.split('#');
+  // No width = the plain `src` fallback; a card is ~150–310 px wide, so 320 covers it.
+  const size = isPlaceholder ? PLACEHOLDER_WIDTH : (width ?? 320);
+  return `${AMAZON_CDN}${imageId}._AC_SX${size}_FMwebp_.jpg${attempt ? `?attempt=${attempt}` : ''}`;
 }
 
-/** Widths offered in `srcset`; Amazon product originals are rarely wider than ~1500 px. */
+/** The `ngSrc` for a given load attempt (0 = first try). */
+export function withAttempt(imageId: string, attempt: number): string {
+  return attempt > 0 ? `${imageId}#${attempt}` : imageId;
+}
+
+/**
+ * Widths offered in `srcset`. Dense around card sizes (150–310 px, ×2 on high-DPI phones) so the
+ * browser never has to round far up; Amazon product originals are rarely wider than ~1500 px.
+ */
 const IMAGE_SETTINGS: ImageConfig = {
-  breakpoints: [160, 240, 320, 480, 640, 800, 1080, 1440],
+  breakpoints: [160, 240, 280, 320, 400, 480, 640, 800, 1080, 1440],
   placeholderResolution: PLACEHOLDER_WIDTH,
 };
 

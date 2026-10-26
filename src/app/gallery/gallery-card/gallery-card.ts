@@ -9,6 +9,13 @@ import { SmartImage } from '../smart-image/smart-image';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
   template: `
+    <!--
+      sizes = real card width as a share of the window, net of the 256 px sidebar (from md), padding
+      and gaps: 4 cols ≈ 16–19vw, 3 cols ≈ 19–25vw, 2 cols on phones ≈ 45vw. Lazy images use the
+      measured width anyway ("auto"); this matters for the priority ones, which load before layout.
+      No blur placeholder: its background image downloads for every card at once, even far below
+      the fold, and competes with the LCP image. The shimmer covers loading instead.
+    -->
     <article
       class="relative flex h-full flex-col overflow-hidden rounded-xl border border-surface bg-surface-0 transition-shadow hover:shadow-md has-[.open:focus-visible]:ring-2 has-[.open:focus-visible]:ring-primary dark:bg-surface-900"
     >
@@ -17,7 +24,8 @@ import { SmartImage } from '../smart-image/smart-image';
         [src]="item().imageId"
         [alt]="item().alt"
         [priority]="priority()"
-        sizes="(min-width: 1280px) 20vw, (min-width: 768px) 30vw, 50vw"
+        [placeholder]="false"
+        sizes="(min-width: 1280px) 19vw, (min-width: 768px) 24vw, 45vw"
       />
       <div class="flex flex-1 flex-col gap-1 p-3">
         <span class="text-xs font-medium uppercase tracking-wide text-muted-color">{{ item().category }}</span>

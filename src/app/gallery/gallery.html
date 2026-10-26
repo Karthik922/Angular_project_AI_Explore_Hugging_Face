@@ -31,9 +31,8 @@
 <nav class="mb-2 flex flex-wrap gap-2" aria-label="Filter by category">
   <button type="button" class="chip" [class.chip-active]="!activeCategory()" [attr.aria-pressed]="!activeCategory()" (click)="selectCategory(undefined)">
     All
-    @if (totalCount() !== undefined) {
-      <span class="chip-count">{{ totalCount() }}</span>
-    }
+    <!-- Always rendered (empty until loaded) so the chip doesn't grow when the count arrives. -->
+    <span class="chip-count">{{ totalCount() ?? '' }}</span>
   </button>
   @for (category of categories(); track category.name) {
     <button
@@ -44,9 +43,7 @@
       (click)="selectCategory(category.name)"
     >
       {{ category.name }}
-      @if (category.count !== undefined) {
-        <span class="chip-count">{{ category.count }}</span>
-      }
+      <span class="chip-count">{{ category.count ?? '' }}</span>
     </button>
   }
 </nav>
@@ -116,7 +113,8 @@
       class="grid list-none grid-cols-2 gap-4 p-0 transition-opacity md:grid-cols-3 xl:grid-cols-4"
       [class.opacity-60]="gallery.isLoading()"
     >
-      @for (item of items(); track item.id; let i = $index) {
+      <!-- Priority is fixed once an image renders, so a card that moves in/out of the first row is re-created. -->
+      @for (item of items(); track ($index < priorityImages ? 'p' : '') + item.id; let i = $index) {
         <li>
           <app-gallery-card [item]="item" [priority]="i < priorityImages" (open)="openLightbox(i)" />
         </li>
