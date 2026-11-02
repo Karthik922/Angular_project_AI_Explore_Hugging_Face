@@ -10,4 +10,5 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Users', icon: 'pi pi-users', link: '/users', exact: true },
   { label: 'Add User', icon: 'pi pi-user-plus', link: '/users/new' },
   { label: 'Image Gallery', icon: 'pi pi-images', link: '/gallery' },
+  { label: 'Chat', icon: 'pi pi-comments', link: '/chat' },
 ];

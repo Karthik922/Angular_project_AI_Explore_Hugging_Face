@@ -1,0 +1,163 @@
+<div class="chat-shell relative flex overflow-hidden rounded-xl border border-surface bg-surface-0 dark:bg-surface-900">
+  <!-- Conversation list: side panel on desktop, slide-over on phones -->
+  <aside
+    class="history absolute inset-y-0 left-0 z-20 flex w-72 flex-col border-r border-surface bg-surface-0 dark:bg-surface-900 lg:static lg:z-auto lg:w-64"
+    [class.open]="showHistory()"
+    aria-label="Chats"
+  >
+    <div class="p-3">
+      <p-button label="New chat" icon="pi pi-plus" styleClass="w-full" [outlined]="true" (onClick)="newChat()" />
+    </div>
+    <nav class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 pb-2">
+      @for (chat of store.history(); track chat.id) {
+        <div class="hist-item group" [class.active]="chat.id === store.activeId()">
+          <button type="button" class="hist-open" (click)="open(chat.id)">
+            <span class="block w-full truncate text-sm font-medium">{{ chat.title }}</span>
+            <span class="text-xs text-muted-color">{{ chat.updatedAt | date: 'MMM d, h:mm a' }}</span>
+          </button>
+          <span class="hist-tools">
+            <button type="button" title="Rename" [attr.aria-label]="'Rename ' + chat.title" (click)="rename(chat.id, chat.title)"><i class="pi pi-pencil"></i></button>
+            <button type="button" title="Delete" [attr.aria-label]="'Delete ' + chat.title" (click)="remove(chat.id, chat.title)"><i class="pi pi-trash"></i></button>
+          </span>
+        </div>
+      } @empty {
+        <p class="px-3 py-6 text-center text-sm text-muted-color">No chats yet.</p>
+      }
+    </nav>
+    @if (store.history().length > 0) {
+      <div class="border-t border-surface p-2">
+        <button type="button" class="hist-clear" (click)="clearAll()"><i class="pi pi-trash"></i> Delete all chats</button>
+      </div>
+    }
+  </aside>
+  @if (showHistory()) {
+    <button type="button" class="absolute inset-0 z-10 bg-black/30 lg:hidden" aria-label="Close chat list" (click)="showHistory.set(false)"></button>
+  }
+
+  <section class="flex min-w-0 flex-1 flex-col">
+    <!-- Header: model status + settings -->
+    <header class="flex items-center gap-2 border-b border-surface px-3 py-2.5">
+      <p-button icon="pi pi-list" [text]="true" [rounded]="true" severity="secondary" styleClass="lg:!hidden" ariaLabel="Show chats" (onClick)="showHistory.set(true)" />
+      <div class="min-w-0 flex-1">
+        <h1 class="m-0 truncate text-base font-semibold">{{ store.active()?.title ?? 'Chat' }}</h1>
+        <p class="m-0 flex items-center gap-1.5 text-xs text-muted-color" role="status">
+          @switch (online()) {
+            @case (true) {
+              <span class="size-2 rounded-full bg-green-500"></span>
+              {{ modelName() }} · {{ status.value()?.contextSize | number }}-token memory
+            }
+            @case (false) {
+              <span class="size-2 rounded-full bg-red-500"></span> Model server offline
+              <button type="button" class="link-btn" (click)="status.reload()">Check again</button>
+            }
+            @default {
+              @if (status.error()) {
+                <span class="size-2 rounded-full bg-red-500"></span> Can't reach the backend
+                <button type="button" class="link-btn" (click)="status.reload()">Retry</button>
+              } @else {
+                <span class="size-2 rounded-full bg-surface-400"></span> Checking model…
+              }
+            }
+          }
+        </p>
+      </div>
+      <p-button
+        icon="pi pi-sliders-h"
+        [text]="true"
+        [rounded]="true"
+        [severity]="showSettings() ? 'primary' : 'secondary'"
+        ariaLabel="Chat settings"
+        [attr.aria-expanded]="showSettings()"
+        (onClick)="showSettings.set(!showSettings())"
+      />
+    </header>
+
+    @if (showSettings()) {
+      <div class="settings grid gap-3 border-b border-surface p-3 text-sm sm:grid-cols-2">
+        <label class="flex flex-col gap-1 sm:col-span-2" for="chat-system">
+          <span class="font-medium">System prompt <span class="text-muted-color">(instructions sent before every chat)</span></span>
+          <textarea
+            id="chat-system"
+            rows="2"
+            class="field"
+            [value]="store.settings().systemPrompt"
+            (change)="store.updateSettings({ systemPrompt: textFrom($event) })"
+          ></textarea>
+        </label>
+        <label class="flex flex-col gap-1" for="chat-temp">
+          <span class="font-medium">Creativity (temperature): {{ store.settings().temperature | number: '1.1-1' }}</span>
+          <input id="chat-temp" type="range" min="0" max="1.5" step="0.1" [value]="store.settings().temperature" (input)="store.updateSettings({ temperature: numberFrom($event) })" />
+          <span class="text-xs text-muted-color">Low = precise and repeatable · High = more varied</span>
+        </label>
+        <label class="flex flex-col gap-1" for="chat-max">
+          <span class="font-medium">Max reply length (tokens)</span>
+          <input id="chat-max" type="number" min="64" max="1024" step="64" class="field" [value]="store.settings().maxTokens" (change)="store.updateSettings({ maxTokens: numberFrom($event) })" />
+          <span class="text-xs text-muted-color">64–1024. Longer replies leave less room for history.</span>
+        </label>
+        <div class="sm:col-span-2">
+          <button type="button" class="link-btn" (click)="store.resetSettings()">Reset to defaults</button>
+        </div>
+      </div>
+    }
+
+    <!-- Messages -->
+    <div #scroller class="relative min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-6" (scroll)="onScroll(scroller)">
+      <div class="mx-auto flex max-w-3xl flex-col gap-5" aria-live="polite">
+        @for (msg of store.messages(); track msg.id; let last = $last) {
+          <app-chat-message
+            [message]="msg"
+            [isLast]="last"
+            [busy]="store.generating()"
+            (regenerate)="store.regenerate()"
+            (continueReply)="store.continueReply()"
+            (edit)="store.editAndResend(msg.id, $event)"
+          />
+        } @empty {
+          <div class="flex flex-col items-center gap-4 py-10 text-center">
+            <span class="flex size-12 items-center justify-center rounded-full bg-primary text-primary-contrast"><i class="pi pi-sparkles text-xl"></i></span>
+            <div>
+              <h2 class="m-0 text-xl font-semibold">How can I help?</h2>
+              <p class="mt-1 mb-0 text-sm text-muted-color">Ask a coding question. Replies stream in as they're written.</p>
+            </div>
+            <div class="grid w-full gap-2 sm:grid-cols-2">
+              @for (s of suggestions; track s) {
+                <button type="button" class="suggestion" (click)="useSuggestion(s)">{{ s }}</button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    @if (!atBottom() && store.messages().length > 0) {
+      <div class="pointer-events-none relative">
+        <button type="button" class="to-bottom pointer-events-auto" aria-label="Scroll to latest message" (click)="scrollToBottom()"><i class="pi pi-arrow-down"></i></button>
+      </div>
+    }
+
+    <!-- Composer -->
+    <form class="border-t border-surface p-3" (submit)="$event.preventDefault(); send()">
+      <div class="composer mx-auto flex max-w-3xl items-end gap-2">
+        <textarea
+          #input
+          id="chat-input"
+          rows="1"
+          class="min-w-0 flex-1"
+          placeholder="Message the model…"
+          aria-label="Message"
+          [value]="draft()"
+          (input)="draft.set(textFrom($event))"
+          (keydown)="onComposerKey($event)"
+        ></textarea>
+        @if (store.generating()) {
+          <p-button icon="pi pi-stop" severity="secondary" [rounded]="true" ariaLabel="Stop generating" (onClick)="store.stop()" />
+        } @else {
+          <p-button type="submit" icon="pi pi-send" [rounded]="true" ariaLabel="Send" [disabled]="!canSend()" />
+        }
+      </div>
+      <p class="mx-auto mt-1.5 mb-0 max-w-3xl text-center text-xs text-muted-color">
+        Enter to send · Shift+Enter for a new line · Esc to stop. Local model: answers can be wrong.
+      </p>
+    </form>
+  </section>
+</div>

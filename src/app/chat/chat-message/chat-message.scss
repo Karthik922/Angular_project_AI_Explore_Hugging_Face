@@ -1,0 +1,81 @@
+// ViewEncapsulation.None: every selector is scoped under app-chat-message.
+app-chat-message {
+  .cm-user {
+    max-width: 85%;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: var(--p-primary-contrast-color);
+    background: var(--p-primary-color);
+  }
+
+  .cm-actions { display: flex; align-items: center; gap: 2px; min-height: 28px; }
+  .cm-icon, .cm-btn {
+    font: inherit;
+    cursor: pointer;
+    color: var(--p-text-muted-color);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+  }
+  .cm-icon { width: 28px; height: 28px; font-size: 0.8rem; }
+  .cm-icon:hover, .cm-code-head button:hover { color: var(--p-text-color); }
+  .cm-icon:hover { background: var(--p-content-hover-background); }
+  .cm-btn { padding: 3px 10px; font-size: 0.8rem; border-color: var(--p-content-border-color); color: var(--p-text-color); }
+  .cm-btn:hover { border-color: var(--p-primary-color); color: var(--p-primary-color); }
+  .cm-btn-primary, .cm-btn-primary:hover { background: var(--p-primary-color); border-color: var(--p-primary-color); color: var(--p-primary-contrast-color); }
+  .cm-icon:focus-visible, .cm-btn:focus-visible { outline: 2px solid var(--p-primary-color); outline-offset: 1px; }
+  .cm-stats { margin-left: 6px; font-size: 0.75rem; color: var(--p-text-muted-color); }
+
+  .cm-note, .cm-error {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+    margin: 4px 0; font-size: 0.8rem; color: var(--p-text-muted-color);
+  }
+  .cm-error { color: var(--p-red-500, #dc2626); }
+
+  .cm-thinking { display: flex; gap: 5px; padding: 10px 0; }
+  .cm-thinking span {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--p-text-muted-color);
+    animation: cm-bounce 1.2s infinite ease-in-out;
+  }
+  .cm-thinking span:nth-child(2) { animation-delay: 0.15s; }
+  .cm-thinking span:nth-child(3) { animation-delay: 0.3s; }
+
+  // blinking caret after the text while streaming
+  .cm-streaming > div:last-child > :last-child::after,
+  .cm-streaming > .cm-code:last-child pre code::after {
+    content: '▍';
+    animation: cm-blink 1s steps(2) infinite;
+  }
+
+  // ---- rendered Markdown ----
+  .chat-md { font-size: 0.925rem; line-height: 1.65; color: var(--p-text-color); overflow-wrap: anywhere; }
+  .chat-md p { margin: 0 0 0.6em; }
+  .chat-md ul, .chat-md ol { margin: 0 0 0.6em; padding-left: 1.4em; }
+  .chat-md li { margin: 0.15em 0; }
+  .chat-md :is(h1, h2, h3) { margin: 0.8em 0 0.4em; font-size: 1.05em; }
+  .chat-md a { color: var(--p-primary-color); }
+  .chat-md blockquote { margin: 0 0 0.6em; padding-left: 0.8em; border-left: 3px solid var(--p-content-border-color); }
+  .chat-md :not(pre) > code {
+    padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.85em;
+    font-family: ui-monospace, Consolas, monospace;
+    background: var(--p-content-hover-background);
+  }
+  .chat-md table { border-collapse: collapse; margin: 0 0 0.6em; font-size: 0.875em; display: block; overflow-x: auto; }
+  .chat-md th, .chat-md td { border: 1px solid var(--p-content-border-color); padding: 4px 8px; }
+
+  .cm-code { margin: 0 0 0.75em; border: 1px solid var(--p-content-border-color); border-radius: 8px; overflow: hidden; }
+  .cm-code-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 10px; font-size: 0.75rem;
+    color: var(--p-text-muted-color); background: var(--p-content-hover-background);
+  }
+  .cm-code-head button { display: inline-flex; gap: 5px; align-items: center; font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  .cm-code pre { margin: 0; padding: 10px 12px; overflow-x: auto; font: 0.82rem/1.55 ui-monospace, Consolas, monospace; }
+}
+
+@keyframes cm-bounce { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; } 40% { transform: scale(1); opacity: 1; } }
+@keyframes cm-blink { to { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) {
+  app-chat-message .cm-thinking span, app-chat-message .cm-streaming * { animation: none !important; }
+}

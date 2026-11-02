@@ -1,0 +1,59 @@
+:host { display: block; }
+
+// Fill the viewport below the app header (4rem) and the page padding (3rem).
+.chat-shell { height: calc(100dvh - 7rem); min-height: 420px; }
+
+.history { transform: translateX(-100%); transition: transform 0.2s ease; }
+.history.open { transform: translateX(0); }
+@media (min-width: 1024px) { .history { transform: none; transition: none; } }
+
+.hist-item {
+  display: flex; align-items: center; gap: 2px; min-width: 0;
+  margin-bottom: 2px; border-radius: 8px;
+}
+.hist-item:hover, .hist-item.active { background: var(--p-content-hover-background); }
+.hist-open {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  padding: 8px 10px; font: inherit; text-align: left; color: var(--p-text-color);
+  background: none; border: 0; cursor: pointer;
+}
+.hist-tools { display: flex; opacity: 0; padding-right: 4px; }
+.hist-item:hover .hist-tools, .hist-item.active .hist-tools, .hist-tools:focus-within { opacity: 1; }
+.hist-tools button, .hist-clear {
+  font: inherit; color: var(--p-text-muted-color); background: none; border: 0; cursor: pointer; border-radius: 6px;
+}
+.hist-tools button { width: 26px; height: 26px; font-size: 0.75rem; }
+.hist-tools button:hover, .hist-clear:hover { color: var(--p-text-color); background: var(--p-content-background); }
+.hist-clear { display: flex; gap: 6px; align-items: center; width: 100%; padding: 6px 10px; font-size: 0.8rem; }
+
+.link-btn { font: inherit; color: var(--p-primary-color); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+
+.field {
+  font: inherit; color: var(--p-text-color); background: var(--p-content-background);
+  border: 1px solid var(--p-content-border-color); border-radius: 8px; padding: 6px 10px; resize: vertical;
+}
+.field:focus, .composer:focus-within { outline: 2px solid var(--p-primary-color); outline-offset: -1px; }
+input[type='range'] { accent-color: var(--p-primary-color); }
+
+.suggestion {
+  padding: 10px 12px; font: inherit; font-size: 0.85rem; text-align: left; color: var(--p-text-color);
+  background: var(--p-content-background); border: 1px solid var(--p-content-border-color); border-radius: 10px; cursor: pointer;
+}
+.suggestion:hover { border-color: var(--p-primary-color); }
+
+.to-bottom {
+  position: absolute; right: 50%; bottom: 10px; transform: translateX(50%);
+  width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
+  color: var(--p-text-color); background: var(--p-content-background); border: 1px solid var(--p-content-border-color);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.12);
+}
+
+.composer {
+  padding: 6px 6px 6px 14px; border: 1px solid var(--p-content-border-color); border-radius: 22px;
+  background: var(--p-content-background);
+}
+.composer textarea {
+  field-sizing: content; // grows with the text (Chromium); max-height caps it
+  max-height: 200px; padding: 8px 0; font: inherit; font-size: 0.925rem; line-height: 1.5;
+  color: var(--p-text-color); background: transparent; border: 0; outline: 0; resize: none;
+}
