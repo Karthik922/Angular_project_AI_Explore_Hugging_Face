@@ -1,0 +1,36 @@
+:host { display: block; min-width: 0; }
+// Table cells: one line, cut with an ellipsis (the full text is in the title tooltip).
+:host(.a2-cell) { overflow: hidden; }
+:host(.a2-cell) > * { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+.a2-col { display: flex; flex-direction: column; gap: 10px; }
+.a2-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.a2-list { display: flex; flex-direction: column; gap: 8px; }
+
+.a2-card {
+  padding: 12px 14px;
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 12px;
+  background: var(--p-content-background);
+}
+
+.a2-h2 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+.a2-h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+.a2-body { margin: 0; font-size: 0.9rem; line-height: 1.5; overflow-wrap: anywhere; }
+.a2-caption { font-size: 0.75rem; color: var(--p-text-muted-color); }
+.a2-label { font-size: 0.75rem; font-weight: 600; color: var(--p-text-muted-color); }
+.a2-divider { margin: 0; border: 0; border-top: 1px solid var(--p-content-border-color); }
+
+.a2-btn {
+  padding: 5px 12px;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--p-text-color);
+  background: transparent;
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.a2-btn:hover:not(:disabled) { color: var(--p-primary-color); border-color: var(--p-primary-color); }
+.a2-btn:focus-visible { outline: 2px solid var(--p-primary-color); outline-offset: 1px; }
+.a2-btn:disabled { cursor: default; opacity: 0.6; }

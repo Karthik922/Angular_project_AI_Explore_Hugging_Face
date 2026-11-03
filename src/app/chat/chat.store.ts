@@ -1,22 +1,26 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { CHAT_CONFIG } from './chat.config';
 import { ChatApi, ChatApiError } from './chat-api';
-import { ApiMessage, ChatMessage, ChatSettings, Conversation, DEFAULT_SETTINGS } from './chat.model';
+import { ApiMessage, ChatMessage, ChatSettings, Conversation, ToolActivity } from './chat.model';
 
-const CONVERSATIONS_KEY = 'chat.conversations.v1';
-const SETTINGS_KEY = 'chat.settings.v1';
 const MAX_SAVED_CONVERSATIONS = 50;
 
 /**
- * All chat state as signals. Lives at root so a reply keeps streaming while you visit other pages,
- * and conversations + settings are saved in this browser (localStorage).
+ * All chat state as signals. Provided per chat route (see chat.routes.ts) with a CHAT_CONFIG, so
+ * the plain chat and the data chat share this code but keep separate conversations. Route
+ * providers live as long as the app, so a reply keeps streaming while you visit other pages.
+ * Conversations + settings are saved in this browser (localStorage).
  */
-@Injectable({ providedIn: 'root' })
+@Injectable()
 export class ChatStore {
   private readonly api = inject(ChatApi);
+  private readonly config = inject(CHAT_CONFIG);
+  private readonly conversationsKey = `${this.config.storageKey}.conversations.v1`;
+  private readonly settingsKey = `${this.config.storageKey}.settings.v1`;
 
-  readonly conversations = signal<Conversation[]>(load(CONVERSATIONS_KEY, []).map(recoverInterrupted));
+  readonly conversations = signal<Conversation[]>(load(this.conversationsKey, [] as Conversation[]).map(recoverInterrupted));
   readonly activeId = signal<string | null>(this.conversations()[0]?.id ?? null);
-  readonly settings = signal<ChatSettings>({ ...DEFAULT_SETTINGS, ...load(SETTINGS_KEY, {}) });
+  readonly settings = signal<ChatSettings>({ ...this.config.defaultSettings, ...load(this.settingsKey, {}) });
 
   readonly active = computed(() => this.conversations().find((c) => c.id === this.activeId()) ?? null);
   readonly messages = computed(() => this.active()?.messages ?? []);
@@ -31,9 +35,9 @@ export class ChatStore {
     // tracks `generating`, and it saves once when the reply finishes.
     effect(() => {
       if (this.generating()) return;
-      save(CONVERSATIONS_KEY, this.history().slice(0, MAX_SAVED_CONVERSATIONS));
+      save(this.conversationsKey, this.history().slice(0, MAX_SAVED_CONVERSATIONS));
     });
-    effect(() => save(SETTINGS_KEY, this.settings()));
+    effect(() => save(this.settingsKey, this.settings()));
   }
 
   // ---------- conversations ----------
@@ -72,7 +76,7 @@ export class ChatStore {
   }
 
   resetSettings(): void {
-    this.settings.set(DEFAULT_SETTINGS);
+    this.settings.set(this.config.defaultSettings);
   }
 
   // ---------- messaging ----------
@@ -152,7 +156,7 @@ export class ChatStore {
     };
 
     try {
-      for await (const event of this.api.stream(request, controller.signal)) {
+      for await (const event of this.api.stream(this.config.endpoint, request, controller.signal)) {
         switch (event.type) {
           case 'meta':
             if (event.trimmed > 0) update((m) => ({ ...m, trimmed: event.trimmed }));
@@ -167,6 +171,26 @@ export class ChatStore {
           case 'usage':
             update((m) => ({ ...m, stats: event.stats }));
             break;
+          case 'tool_call': {
+            const activity: ToolActivity = { id: event.id, name: event.name, arguments: event.arguments, status: 'running' };
+            update((m) => ({ ...m, tools: [...(m.tools ?? []), activity] }));
+            break;
+          }
+          case 'tool_result':
+            update((m) => ({
+              ...m,
+              tools: m.tools?.map((tool) =>
+                tool.id === event.id
+                  ? { ...tool, status: event.ok ? 'done' : 'error', data: event.data, error: event.error }
+                  : tool,
+              ),
+            }));
+            break;
+          case 'a2ui':
+            update((m) => ({ ...m, ui: [...(m.ui ?? []), event.message] }));
+            break;
+          case 'error':
+            throw new ChatApiError(event.message, 0);
         }
       }
       flush();

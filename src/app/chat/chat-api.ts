@@ -1,11 +1,16 @@
 import { Injectable } from '@angular/core';
+import type { A2uiMessage } from './a2ui/a2ui.model';
 import { ApiMessage, ChatStats } from './chat.model';
 
 export type StreamEvent =
   | { type: 'meta'; trimmed: number }
   | { type: 'delta'; text: string }
   | { type: 'finish'; finishReason: 'stop' | 'length' | null }
-  | { type: 'usage'; stats: ChatStats };
+  | { type: 'usage'; stats: ChatStats }
+  | { type: 'tool_call'; id: string; name: string; arguments: Record<string, unknown> }
+  | { type: 'tool_result'; id: string; ok: boolean; data: unknown; error?: string }
+  | { type: 'a2ui'; message: A2uiMessage }
+  | { type: 'error'; message: string };
 
 export interface CompletionRequest {
   messages: ApiMessage[];
@@ -22,7 +27,23 @@ export class ChatApiError extends Error {
   }
 }
 
+interface ToolEventJson {
+  type: 'call' | 'result';
+  id: string;
+  name: string;
+  arguments?: Record<string, unknown>;
+  ok?: boolean;
+  data?: unknown;
+  error?: string;
+}
+
 interface ChunkJson {
+  /** Data Chat only: a tool step, sent by the backend between model chunks. */
+  tool_event?: ToolEventJson;
+  /** A2UI page only: one message describing the reply's UI surface. */
+  a2ui?: A2uiMessage;
+  /** Sent when the reply fails after streaming started. */
+  error?: { message?: string };
   choices?: { delta?: { content?: string | null }; finish_reason?: 'stop' | 'length' | null }[];
   usage?: { prompt_tokens: number; completion_tokens: number };
   timings?: { predicted_per_second?: number };
@@ -57,6 +78,11 @@ export function parseSse(buffer: string): { payloads: ChunkJson[]; done: boolean
 /** Turns one parsed chunk into app events. */
 export function toEvents(chunk: ChunkJson): StreamEvent[] {
   const events: StreamEvent[] = [];
+  if (chunk.error) events.push({ type: 'error', message: chunk.error.message ?? 'The reply was interrupted.' });
+  const tool = chunk.tool_event;
+  if (tool?.type === 'call') events.push({ type: 'tool_call', id: tool.id, name: tool.name, arguments: tool.arguments ?? {} });
+  if (tool?.type === 'result') events.push({ type: 'tool_result', id: tool.id, ok: tool.ok ?? false, data: tool.data, error: tool.error });
+  if (chunk.a2ui) events.push({ type: 'a2ui', message: chunk.a2ui });
   const choice = chunk.choices?.[0];
   if (choice?.delta?.content) events.push({ type: 'delta', text: choice.delta.content });
   if (choice?.finish_reason) events.push({ type: 'finish', finishReason: choice.finish_reason });
@@ -74,16 +100,16 @@ export function toEvents(chunk: ChunkJson): StreamEvent[] {
 }
 
 /**
- * Streams a chat completion from the NestJS proxy (`POST /api/chat/completions`).
+ * Streams a chat completion from the NestJS backend (`/api/chat/completions` or `/api/chat/agent`).
  * Uses fetch directly: HttpClient doesn't expose a response body as a stream of chunks.
  * Abort `signal` to stop generating (the server then stops the model too).
  */
 @Injectable({ providedIn: 'root' })
 export class ChatApi {
-  async *stream(request: CompletionRequest, signal: AbortSignal): AsyncGenerator<StreamEvent> {
+  async *stream(endpoint: string, request: CompletionRequest, signal: AbortSignal): AsyncGenerator<StreamEvent> {
     let response: Response;
     try {
-      response = await fetch('/api/chat/completions', {
+      response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
         body: JSON.stringify({ ...request, stream: true }),

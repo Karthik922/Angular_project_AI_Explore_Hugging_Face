@@ -5,16 +5,9 @@ import {
 } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { ChatMessageView } from './chat-message/chat-message';
+import { CHAT_CONFIG } from './chat.config';
 import { ChatStatus } from './chat.model';
 import { ChatStore } from './chat.store';
-
-/** Starter prompts for an empty chat (the model is a coding assistant). */
-const SUGGESTIONS = [
-  'Explain the difference between signal(), computed() and effect() in Angular',
-  'Write a NestJS controller with CRUD endpoints for products',
-  'Find the bug: for (var i = 0; i < 3; i++) setTimeout(() => console.log(i))',
-  'Convert this SQL to a Sequelize query: SELECT * FROM users WHERE age > 30 ORDER BY name',
-];
 
 @Component({
   selector: 'app-chat',
@@ -26,7 +19,13 @@ const SUGGESTIONS = [
 })
 export class Chat {
   protected readonly store = inject(ChatStore);
-  protected readonly suggestions = SUGGESTIONS;
+  protected readonly config = inject(CHAT_CONFIG);
+
+  /** Data Chat and A2UI: which database tools the backend can use (from the Python MCP server). */
+  protected readonly tools = httpResource<{ connected: boolean; tools: { name: string; description: string }[] }>(() =>
+    this.config.mode !== 'chat' ? '/api/chat/tools' : undefined,
+  );
+  protected readonly toolNames = computed(() => (this.tools.hasValue() ? this.tools.value().tools.map((t) => t.name).join(', ') : ''));
 
   /** Is the model server up? Shown in the header; reload() re-checks. */
   protected readonly status = httpResource<ChatStatus>(() => '/api/chat/status');

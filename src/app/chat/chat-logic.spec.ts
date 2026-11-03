@@ -25,6 +25,23 @@ describe('toEvents', () => {
   });
 });
 
+describe('toEvents: Data Chat payloads', () => {
+  it('maps tool calls and results', () => {
+    expect(toEvents({ tool_event: { type: 'call', id: 'call_0', name: 'list_users', arguments: { limit: 20 } } })).toEqual([
+      { type: 'tool_call', id: 'call_0', name: 'list_users', arguments: { limit: 20 } },
+    ]);
+    expect(toEvents({ tool_event: { type: 'result', id: 'call_0', name: 'list_users', ok: true, data: { total: 4 } } })).toEqual([
+      { type: 'tool_result', id: 'call_0', ok: true, data: { total: 4 }, error: undefined },
+    ]);
+  });
+
+  it('turns a mid-stream error payload into an error event', () => {
+    expect(toEvents({ error: { message: 'The reply was interrupted. Try again.' } })).toEqual([
+      { type: 'error', message: 'The reply was interrupted. Try again.' },
+    ]);
+  });
+});
+
 describe('toSegments', () => {
   it('splits text and fenced code', () => {
     const segments = toSegments('Use this:\n\n```js\nconst add = (a, b) => a + b;\n```\n\nDone.');

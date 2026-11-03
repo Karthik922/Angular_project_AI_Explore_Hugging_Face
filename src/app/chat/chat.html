@@ -39,7 +39,7 @@
     <header class="flex items-center gap-2 border-b border-surface px-3 py-2.5">
       <p-button icon="pi pi-list" [text]="true" [rounded]="true" severity="secondary" styleClass="lg:!hidden" ariaLabel="Show chats" (onClick)="showHistory.set(true)" />
       <div class="min-w-0 flex-1">
-        <h1 class="m-0 truncate text-base font-semibold">{{ store.active()?.title ?? 'Chat' }}</h1>
+        <h1 class="m-0 truncate text-base font-semibold">{{ store.active()?.title ?? config.title }}</h1>
         <p class="m-0 flex items-center gap-1.5 text-xs text-muted-color" role="status">
           @switch (online()) {
             @case (true) {
@@ -57,6 +57,17 @@
               } @else {
                 <span class="size-2 rounded-full bg-surface-400"></span> Checking model…
               }
+            }
+          }
+          @if (config.mode !== 'chat') {
+            <span class="mx-1">·</span>
+            @if (tools.hasValue()) {
+              <span [title]="toolNames()"><i class="pi pi-database"></i> {{ tools.value()!.tools.length }} database tools</span>
+            } @else if (tools.error()) {
+              <span class="text-red-500"><i class="pi pi-database"></i> Database tools unavailable</span>
+              <button type="button" class="link-btn" (click)="tools.reload()">Retry</button>
+            } @else {
+              <span><i class="pi pi-spin pi-spinner"></i> Starting database tools…</span>
             }
           }
         </p>
@@ -108,19 +119,21 @@
             [message]="msg"
             [isLast]="last"
             [busy]="store.generating()"
+            [uiMode]="config.mode === 'a2ui'"
             (regenerate)="store.regenerate()"
             (continueReply)="store.continueReply()"
             (edit)="store.editAndResend(msg.id, $event)"
+            (ask)="store.send($event)"
           />
         } @empty {
           <div class="flex flex-col items-center gap-4 py-10 text-center">
-            <span class="flex size-12 items-center justify-center rounded-full bg-primary text-primary-contrast"><i class="pi pi-sparkles text-xl"></i></span>
+            <span class="flex size-12 items-center justify-center rounded-full bg-primary text-primary-contrast"><i class="pi text-xl" [class.pi-sparkles]="config.mode === 'chat'" [class.pi-database]="config.mode === 'data'" [class.pi-objects-column]="config.mode === 'a2ui'"></i></span>
             <div>
-              <h2 class="m-0 text-xl font-semibold">How can I help?</h2>
-              <p class="mt-1 mb-0 text-sm text-muted-color">Ask a coding question. Replies stream in as they're written.</p>
+              <h2 class="m-0 text-xl font-semibold">{{ config.emptyTitle }}</h2>
+              <p class="mt-1 mb-0 text-sm text-muted-color">{{ config.emptyHint }}</p>
             </div>
             <div class="grid w-full gap-2 sm:grid-cols-2">
-              @for (s of suggestions; track s) {
+              @for (s of config.suggestions; track s) {
                 <button type="button" class="suggestion" (click)="useSuggestion(s)">{{ s }}</button>
               }
             </div>
@@ -143,7 +156,7 @@
           id="chat-input"
           rows="1"
           class="min-w-0 flex-1"
-          placeholder="Message the model…"
+          [placeholder]="config.placeholder"
           aria-label="Message"
           [value]="draft()"
           (input)="draft.set(textFrom($event))"

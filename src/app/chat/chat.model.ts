@@ -1,9 +1,22 @@
+import type { A2uiMessage } from './a2ui/a2ui.model';
+
 export type ChatRole = 'system' | 'user' | 'assistant';
 
 export interface ChatStats {
   promptTokens: number;
   completionTokens: number;
   tokensPerSecond: number;
+}
+
+/** One tool the assistant used while answering (Data Chat). */
+export interface ToolActivity {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+  status: 'running' | 'done' | 'error';
+  /** Structured result from the MCP tool (exact database rows). */
+  data?: unknown;
+  error?: string;
 }
 
 export interface ChatMessage {
@@ -19,6 +32,10 @@ export interface ChatMessage {
   stats?: ChatStats;
   /** Older messages the server left out so this request fit the model's context window. */
   trimmed?: number;
+  /** Tools used for this reply, in order. */
+  tools?: ToolActivity[];
+  /** A2UI page only: the messages describing this reply's UI surface, in arrival order. */
+  ui?: A2uiMessage[];
 }
 
 export interface Conversation {

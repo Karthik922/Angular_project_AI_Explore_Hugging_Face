@@ -1,10 +1,13 @@
 import { ChangeDetectionStrategy, Component, ViewEncapsulation, computed, input, output, signal } from '@angular/core';
 import { ChatMessage } from '../chat.model';
 import { toSegments } from '../markdown';
+import { ToolActivityView } from '../tool-activity/tool-activity';
+import { A2uiSurfaceView } from '../a2ui/a2ui-surface';
 
 /** One chat bubble: Markdown with copyable code blocks, streaming cursor, stats and actions. */
 @Component({
   selector: 'app-chat-message',
+  imports: [ToolActivityView, A2uiSurfaceView],
   changeDetection: ChangeDetectionStrategy.OnPush,
   // Markdown arrives as [innerHTML], which emulated encapsulation can't style; selectors are prefixed instead.
   encapsulation: ViewEncapsulation.None,
@@ -45,8 +48,18 @@ import { toSegments } from '../markdown';
           @if (msg.trimmed) {
             <p class="cm-note"><i class="pi pi-info-circle"></i> {{ msg.trimmed }} older {{ msg.trimmed === 1 ? 'message was' : 'messages were' }} left out to fit the model's memory.</p>
           }
-          @if (msg.status === 'streaming' && !msg.content) {
-            <div class="cm-thinking" role="status" aria-label="Model is thinking"><span></span><span></span><span></span></div>
+          @for (tool of msg.tools ?? []; track tool.id) {
+            <!-- On the A2UI page the surface shows the data, so the raw tool result stays folded. -->
+            <app-tool-activity [activity]="tool" [startOpen]="!uiMode() && !msg.ui?.length" />
+          }
+          @if (msg.ui?.length) {
+            <app-a2ui-surface [messages]="msg.ui!" (ask)="ask.emit($event)" />
+          } @else if (msg.status === 'streaming' && !msg.content) {
+            @if (uiMode() && msg.tools?.length) {
+              <p class="cm-note" role="status"><i class="pi pi-spin pi-spinner"></i> Building the view…</p>
+            } @else {
+              <div class="cm-thinking" role="status" aria-label="Model is thinking"><span></span><span></span><span></span></div>
+            }
           } @else {
             <div class="chat-md" [class.cm-streaming]="msg.status === 'streaming'">
               @for (seg of segments(); track $index) {
@@ -108,10 +121,14 @@ export class ChatMessageView {
   readonly isLast = input(false);
   /** A reply is being generated somewhere in this chat. */
   readonly busy = input(false);
+  /** A2UI page: the reply is drawn as a UI surface, so tool results start folded. */
+  readonly uiMode = input(false);
 
   readonly regenerate = output<void>();
   readonly continueReply = output<void>();
   readonly edit = output<string>();
+  /** A2UI page: a follow-up button in the reply's UI was clicked. */
+  readonly ask = output<string>();
 
   protected readonly editing = signal(false);
   protected readonly copiedIndex = signal<number | null>(null);
